@@ -1,28 +1,33 @@
-name: Android Testing CI
-on:
-  push:
-    branches: [ 'main' ]
-  pull_request:
-    branches: [ 'main' ]
-
-
+version: 2
+orbs:
+  android: circleci/android@1.0
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build:
+    working_directory: ~/code
+    docker:
+      #cicleci image for JAVA version 1.8
+      #     - image: circleci/android:api-25-alpha
+      - image: ccistaging/android:api-30
+    environment:
+      JVM_OPTS: -Xmx3200m
     steps:
-      - uses: actions/checkout@v3
-      - name: set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-          cache: gradle
+      - checkout
+      - run:
+          name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
+          command: sudo chmod +x ./gradlew
+      - run:
+          name: Download Dependencies
+          command: ./gradlew androidDependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
 
-      - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-      - name: Unit Test
-        run: ./gradlew testDebugUnitTest
+      # Generate apk
+      - run: ./gradlew assembleDebug
+      - store_artifacts:
+          path: app/build/outputs/apk/
+          destination: apks/
 
-      - name: Android Test Report
-        uses: asadmansr/android-test-report-action@v1.2.0
-        if: ${{ always() }}
+      # run tests!
+      - run: ./gradlew test
