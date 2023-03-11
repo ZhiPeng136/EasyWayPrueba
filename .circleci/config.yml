@@ -26,4 +26,4 @@ jobs:
           destination: apks/
 
       # run tests!
-      - run: ./gradlew test
+      - run: ./gradlew testDebugUnitTest
